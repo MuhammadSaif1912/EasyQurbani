@@ -1,0 +1,131 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../services/cart_service.dart';
+
+class CartScreen extends StatefulWidget {
+  @override
+  _CartScreenState createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<CartScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Load cart data when the screen is initialized
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<CartService>(context, listen: false).loadCart();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cartService = Provider.of<CartService>(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Cart'),
+        backgroundColor: Colors.green[700],
+      ),
+      body: cartService.cartItems.isEmpty
+          ? const Center(child: Text('Your cart is empty'))
+          : ListView.builder(
+              padding: const EdgeInsets.all(16.0),
+              itemCount: cartService.cartItems.length,
+              itemBuilder: (context, index) {
+                final item = cartService.cartItems[index];
+                return Card(
+                  elevation: 5,
+                  margin: const EdgeInsets.symmetric(vertical: 4.0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                  child: ListTile(
+                    leading: ClipRRect(
+                      borderRadius: BorderRadius.circular(8.0),
+                      child: CachedNetworkImage(
+                        imageUrl: item.animal.imageUrl,
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                        errorWidget: (context, url, error) =>
+                            const Icon(Icons.broken_image, size: 50),
+                      ),
+                    ),
+                    title: Text(
+                      item.animal.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.animal.category,
+                          style: TextStyle(
+                            color: Colors.green[700],
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          'Price: Rs ${item.totalPrice}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Colors.black,
+                          ),
+                        ),
+                        Text(
+                          'Advance (50%): Rs ${item.totalPrice * 0.5}',
+                          style: TextStyle(
+                            color: Colors.green[700],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    trailing: IconButton(
+                      icon: Icon(
+                        Icons.delete,
+                        color: Colors.green[700],
+                        size: 20,
+                      ),
+                      onPressed: () {
+                        cartService.removeFromCart(item.animal.id);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('${item.animal.name} removed from cart'),
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+      bottomNavigationBar: cartService.cartItems.isNotEmpty
+          ? Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: ElevatedButton(
+                onPressed: () => Navigator.pushNamed(context, '/checkout'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.tealAccent.withOpacity(0.7),
+                ),
+                child: Text(
+                  'Proceed to Checkout (Rs ${cartService.totalPrice * 0.5})',
+                  style: const TextStyle(fontSize: 16, color: Colors.black),
+                ),
+              ),
+            )
+          : null,
+    );
+  }
+}

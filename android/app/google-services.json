@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "497818130166",
+    "project_id": "player-portfolio-45a0e",
+    "storage_bucket": "player-portfolio-45a0e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:497818130166:android:dae62e62e94a265da37ed7",
+        "android_client_info": {
+          "package_name": "com.example.easy_qurbani"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "497818130166-feksli0pigdpvo409a7g4dallt0p5llv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDhkrUlCHafdJY71oMzS5UixFE6AI9XfJ0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "497818130166-feksli0pigdpvo409a7g4dallt0p5llv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
