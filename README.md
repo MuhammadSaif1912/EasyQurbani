@@ -1,3 +1,3 @@
 # easy_qurbani
 
-A new Flutter project.
+A flutter based application for the sale/purchase of sacrificial animals.
