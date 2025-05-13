@@ -1,3 +1,4 @@
+// lib/screens/offers_screen.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
@@ -13,6 +14,8 @@ class OffersScreen extends StatefulWidget {
 
 class _OffersScreenState extends State<OffersScreen> {
   Stream<List<OfferModel>>? _offersStream;
+  bool _isAdmin = false;
+
 
   @override
   void initState() {
@@ -32,6 +35,9 @@ class _OffersScreenState extends State<OffersScreen> {
     }
 
     final isAdmin = await authService.isAdmin();
+    setState(() {
+      _isAdmin = isAdmin;
+    });
     Query<Map<String, dynamic>> query = FirebaseFirestore.instance
         .collection('offers')
         .orderBy('timestamp', descending: true); // Sort by timestamp, latest first
@@ -86,30 +92,110 @@ class _OffersScreenState extends State<OffersScreen> {
     }
   }
 
+    Future<void> _logout(BuildContext context) async {
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.signOut();
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Logout failed: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context, listen: false);
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.green[700],
         title: const Text(
-          'My Offers',
+          'Offers',
           style: TextStyle(
-            fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
         ),
-        backgroundColor: Colors.green,
-        elevation: 4,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.home, color: Colors.white),
-            tooltip: 'Go to Home',
-            onPressed: () {
-              Navigator.pushReplacementNamed(context, '/home');
-            },
-          ),
-        ],
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Colors.green[700],
+              ),
+              child: const Text(
+                'Easy Qurbani',
+                style: TextStyle(
+                  color: Colors.yellowAccent,
+                  fontSize: 24,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.home_sharp, color: Colors.amber),
+              title: const Text('Home', style: TextStyle(color: Colors.amberAccent)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/home');
+                },
+              ),
+            if (!_isAdmin)
+              ListTile(
+                leading: Icon(Icons.favorite, color: Colors.brown[700]),
+                title: const Text('Wishlist', style: TextStyle(color: Colors.brown)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/wishlist');
+                },
+              ),
+            if (!_isAdmin)
+              ListTile(
+                leading: Icon(Icons.shopping_cart, color: Colors.green[700]),
+                title: const Text('Cart', style: TextStyle(color: Colors.green)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/cart');
+                },
+              ),
+            ListTile(
+              leading: Icon(Icons.local_offer, color: Colors.purple[700]),
+              title: const Text('Offers', style: TextStyle(color: Colors.purple)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/offers');
+              },
+            ),
+            if (_isAdmin)
+              ListTile(
+                leading: Icon(Icons.receipt, color: Colors.orange[700]),
+                title: const Text('Orders', style: TextStyle(color: Colors.orange)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/orders');
+                },
+              ),
+            if (_isAdmin)
+              ListTile(
+                leading: Icon(Icons.people, color: Colors.blue[700]),
+                title: const Text('Users', style: TextStyle(color: Colors.blue)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/users');
+                },
+              ),
+            ListTile(
+              leading: Icon(Icons.logout, color: Colors.red[700]),
+              title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
+              onTap: () {
+                Navigator.pop(context);
+                _logout(context);
+              },
+            ),
+          ],
+        ),
       ),
       body: FutureBuilder<bool>(
         future: authService.isAdmin(),
@@ -174,14 +260,12 @@ class _OffersScreenState extends State<OffersScreen> {
                       padding: const EdgeInsets.all(16.0),
                       child: Row(
                         children: [
-                          // Leading icon
                           const Icon(
-                            Icons.local_offer,
-                            color: Colors.green,
-                            size: 40,
+                            Icons.local_offer_sharp,
+                            color: Colors.purple,
+                            size: 30,
                           ),
                           const SizedBox(width: 16),
-                          // Offer details
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,18 +277,18 @@ class _OffersScreenState extends State<OffersScreen> {
                                       .titleLarge
                                       ?.copyWith(
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
+                                        color: Colors.black,
                                       ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Offered by: ${offer.userName}',
+                                  'Offered by - ${offer.userName}',
                                   style: Theme.of(context)
                                       .textTheme
                                       .bodyMedium
                                       ?.copyWith(
-                                        color: Colors.black54,
-                                        fontStyle: FontStyle.italic,
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                 ),
                                 const SizedBox(height: 4),
@@ -213,7 +297,7 @@ class _OffersScreenState extends State<OffersScreen> {
                                   style: Theme.of(context)
                                       .textTheme
                                       .bodyMedium
-                                      ?.copyWith(color: Colors.black54),
+                                      ?.copyWith(color: Colors.black),
                                 ),
                                 const SizedBox(height: 4),
                                 Row(
@@ -223,7 +307,7 @@ class _OffersScreenState extends State<OffersScreen> {
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodyMedium
-                                          ?.copyWith(color: Colors.black54),
+                                          ?.copyWith(color: Colors.black),
                                     ),
                                     Text(
                                       offer.status,
@@ -244,13 +328,12 @@ class _OffersScreenState extends State<OffersScreen> {
                                     style: Theme.of(context)
                                         .textTheme
                                         .bodySmall
-                                        ?.copyWith(color: Colors.black54),
+                                        ?.copyWith(color: Colors.black),
                                   ),
                                 ],
                               ],
                             ),
                           ),
-                          // Admin actions
                           if (isAdmin)
                             Row(
                               mainAxisSize: MainAxisSize.min,
@@ -262,7 +345,7 @@ class _OffersScreenState extends State<OffersScreen> {
                                   ),
                                   tooltip: 'Accept Offer',
                                   onPressed: isFinalStatus
-                                      ? null // Disable if status is not pending
+                                      ? null
                                       : () => _updateOfferStatus(offer.id, 'accepted'),
                                 ),
                                 IconButton(
@@ -272,7 +355,7 @@ class _OffersScreenState extends State<OffersScreen> {
                                   ),
                                   tooltip: 'Reject Offer',
                                   onPressed: isFinalStatus
-                                      ? null // Disable if status is not pending
+                                      ? null
                                       : () => _updateOfferStatus(offer.id, 'rejected'),
                                 ),
                               ],

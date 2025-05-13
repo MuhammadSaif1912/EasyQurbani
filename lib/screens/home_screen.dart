@@ -1,3 +1,4 @@
+// lib/screens/home_screen.dart
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -230,6 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       key: _scaffoldKey,
       drawer: Drawer(
+        backgroundColor: Colors.white,
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
@@ -245,22 +247,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            ListTile(
-              leading: Icon(Icons.favorite, color: Colors.red[700]),
-              title: const Text('Wishlist', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/wishlist');
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.shopping_cart, color: Colors.green[700]),
-              title: const Text('Cart', style: TextStyle(color: Colors.green)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/cart');
-              },
-            ),
+            if (!_isAdmin)
+              ListTile(
+                leading: Icon(Icons.favorite, color: Colors.brown[700]),
+                title: const Text('Wishlist', style: TextStyle(color: Colors.brown)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/wishlist');
+                },
+              ),
+            if (!_isAdmin)
+              ListTile(
+                leading: Icon(Icons.shopping_cart, color: Colors.green[700]),
+                title: const Text('Cart', style: TextStyle(color: Colors.green)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/cart');
+                },
+              ),
             ListTile(
               leading: Icon(Icons.local_offer, color: Colors.purple[700]),
               title: const Text('Offers', style: TextStyle(color: Colors.purple)),
@@ -269,9 +273,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.pushNamed(context, '/offers');
               },
             ),
+            if (_isAdmin)
+              ListTile(
+                leading: Icon(Icons.receipt, color: Colors.orange[700]),
+                title: const Text('Orders', style: TextStyle(color: Colors.orange)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/orders');
+                },
+              ),
+            if (_isAdmin)
+              ListTile(
+                leading: Icon(Icons.people, color: Colors.blue[700]),
+                title: const Text('Users', style: TextStyle(color: Colors.blue)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/users');
+                },
+              ),
             ListTile(
-              leading: Icon(Icons.logout, color: Colors.blue[700]),
-              title: const Text('Logout', style: TextStyle(color: Colors.blue)),
+              leading: Icon(Icons.logout, color: Colors.red[700]),
+              title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
               onTap: () {
                 Navigator.pop(context);
                 _logout(context);
@@ -297,7 +319,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   IconButton(
                     icon: Icon(
-                      Icons.menu,
+                      Icons.menu_sharp,
                       color: Colors.black,
                       size: 30,
                     ),
@@ -308,61 +330,74 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 16.0),
                   Expanded(
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Container(
-                          width: 180,
-                          child: DropdownButtonFormField<String>(
-                            value: _selectedCategory,
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: Colors.green[50],
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.0),
-                                borderSide: BorderSide.none,
-                              ),
-                              labelStyle: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
-                            ),
-                            items: ['All', 'Lamb', 'Goat', 'Cow', 'Camel', 'Rare']
-                                .map((category) => DropdownMenuItem(
-                                      value: category,
-                                      child: Text(category, style: TextStyle(fontSize: 12)),
-                                    ))
-                                .toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                print('Selected category changed to: $value');
-                                _selectedCategory = value!;
-                              });
-                            },
+                        const Text(
+                          'Homepage',
+                          style: TextStyle(
+                            fontSize: 20,
+                            color: Colors.white,
                           ),
                         ),
-                        const SizedBox(width: 16.0),
-                        Container(
-                          width: 180,
-                          child: DropdownButtonFormField<String>(
-                            value: _sortOption,
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: Colors.green[50],
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.0),
-                                borderSide: BorderSide.none,
+                        Expanded(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 180,
+                                child: DropdownButtonFormField<String>(
+                                  value: _selectedCategory,
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: Colors.green[50],
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    labelStyle: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
+                                  ),
+                                  items: ['All', 'Lamb', 'Goat', 'Cow', 'Camel', 'Rare']
+                                      .map((category) => DropdownMenuItem(
+                                            value: category,
+                                            child: Text(category, style: TextStyle(fontSize: 12)),
+                                          ))
+                                      .toList(),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      print('Selected category changed to: $value');
+                                      _selectedCategory = value!;
+                                    });
+                                  },
+                                ),
                               ),
-                              labelStyle: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
-                            ),
-                            items: ['Price: Low to High', 'Price: High to Low']
-                                .map((option) => DropdownMenuItem(
-                                      value: option,
-                                      child: Text(option, style: TextStyle(fontSize: 12)),
-                                    ))
-                                .toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                print('Sort option changed to: $value');
-                                _sortOption = value!;
-                              });
-                            },
+                              const SizedBox(width: 16.0),
+                              Container(
+                                width: 180,
+                                child: DropdownButtonFormField<String>(
+                                  value: _sortOption,
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: Colors.green[50],
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    labelStyle: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
+                                  ),
+                                  items: ['Price: Low to High', 'Price: High to Low']
+                                      .map((option) => DropdownMenuItem(
+                                            value: option,
+                                            child: Text(option, style: TextStyle(fontSize: 12)),
+                                          ))
+                                      .toList(),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      print('Sort option changed to: $value');
+                                      _sortOption = value!;
+                                    });
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -414,7 +449,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             child: Row(
                               children: [
-                                // Text content on the left
                                 Expanded(
                                   child: Padding(
                                     padding: const EdgeInsets.all(8.0),
@@ -447,7 +481,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                           ),
                                         ),
                                         const SizedBox(height: 4),
-                                        // Buttons with wishlist on left and cart on right
                                         Row(
                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
@@ -503,7 +536,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                   ),
                                 ),
-                                // Image on the right
                                 ClipRRect(
                                   borderRadius: const BorderRadius.horizontal(
                                       right: Radius.circular(12.0)),

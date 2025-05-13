@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../services/wishlist_service.dart';
 import '../services/cart_service.dart';
 import '../models/animal_model.dart';
+import '../services/auth_service.dart';
 
 class WishlistScreen extends StatefulWidget {
   @override
@@ -11,6 +12,8 @@ class WishlistScreen extends StatefulWidget {
 }
 
 class _WishlistScreenState extends State<WishlistScreen> {
+
+
   @override
   void initState() {
     super.initState();
@@ -18,6 +21,17 @@ class _WishlistScreenState extends State<WishlistScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<WishlistService>(context, listen: false).loadWishlist();
     });
+  }
+    Future<void> _logout(BuildContext context) async {
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.signOut();
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Logout failed: $e')),
+      );
+    }
   }
 
   Future<void> _showCartDialog(BuildContext context, AnimalModel animal) async {
@@ -137,8 +151,71 @@ class _WishlistScreenState extends State<WishlistScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Wishlist'),
+        title: const Text('Wishlist',
+        style: TextStyle(
+            color: Colors.white,
+          ),
+        ),
         backgroundColor: Colors.green[700],
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Colors.green[700],
+              ),
+              child: const Text(
+                'Easy Qurbani',
+                style: TextStyle(
+                  color: Colors.yellowAccent,
+                  fontSize: 24,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.home_sharp, color: Colors.amber),
+              title: const Text('Home', style: TextStyle(color: Colors.amberAccent)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/home');
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.favorite, color: Colors.brown[700]),
+                title: const Text('Wishlist', style: TextStyle(color: Colors.brown)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/wishlist');
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.shopping_cart, color: Colors.green[700]),
+                title: const Text('Cart', style: TextStyle(color: Colors.green)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/cart');
+                },
+            ),
+              ListTile(
+              leading: Icon(Icons.local_offer, color: Colors.purple[700]),
+              title: const Text('Offers', style: TextStyle(color: Colors.purple)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/offers');
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.logout, color: Colors.red[700]),
+              title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
+              onTap: () {
+                Navigator.pop(context);
+                _logout(context);
+              },
+            ),
+          ],
+        ),
       ),
       body: wishlistService.wishlist.isEmpty
           ? const Center(child: Text('Your wishlist is empty'))

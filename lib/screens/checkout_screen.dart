@@ -1,7 +1,12 @@
+// lib/screens/checkout_screen.dart
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
 import '../services/cart_service.dart';
+import '../models/order_model.dart';
+import '../models/cart_item.dart';
 
 class CheckoutScreen extends StatefulWidget {
   @override
@@ -34,9 +39,65 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return advance.roundToDouble();
   }
 
+  double _calculateTotalPrice(CartService cartService) {
+    double total = cartService.totalPrice;
+    _butcherOptions.forEach((key, value) {
+      if (value) {
+        total += butcherServiceFee;
+      }
+    });
+    return total.roundToDouble();
+  }
+
+  Future<void> _saveOrder(CartService cartService, AuthService authService) async {
+    final userId = authService.getCurrentUserId();
+    if (userId == null) {
+      throw Exception('User not logged in');
+    }
+
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .get();
+    final userData = userDoc.data();
+    if (userData == null) {
+      throw Exception('User data not found');
+    }
+
+    final order = OrderModel(
+      id: '', // Will be set by Firestore
+      userId: userId,
+      userName: userData['name'] ?? 'Unknown',
+      userEmail: userData['email'] ?? 'Unknown',
+      items: cartService.cartItems.map((item) {
+        return CartItem(
+          animal: item.animal,
+          isButchered: _butcherOptions[item.animal.id] ?? false,
+          deliveryDay: _deliveryDays[item.animal.id] ?? 'Day 1', // Required parameter
+        );
+      }).toList(),
+      totalPrice: _calculateTotalPrice(cartService), // Use calculated total
+      timestamp: DateTime.now(),
+    );
+
+    // Save to orders collection
+    final orderRef = await FirebaseFirestore.instance
+        .collection('orders')
+        .add(order.toFirestore());
+
+    // Save to user's purchases subcollection
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('purchases')
+        .doc(orderRef.id)
+        .set(order.toFirestore());
+  }
+
   @override
   Widget build(BuildContext context) {
     final cartService = Provider.of<CartService>(context);
+    final authService = Provider.of<AuthService>(context, listen: false);
 
     return Scaffold(
       appBar: AppBar(
@@ -173,44 +234,51 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ? Padding(
               padding: const EdgeInsets.all(16.0),
               child: ElevatedButton(
-                onPressed: () {
-                  for (var item in cartService.cartItems) {
-                    cartService.updateCartItem(
-                      item.animal.id,
-                      _butcherOptions[item.animal.id] ?? false,
-                      _deliveryDays[item.animal.id] ?? 'Day 1',
+                onPressed: () async {
+                  try {
+                    for (var item in cartService.cartItems) {
+                      cartService.updateCartItem(
+                        item.animal.id,
+                        _butcherOptions[item.animal.id] ?? false,
+                        _deliveryDays[item.animal.id] ?? 'Day 1',
+                      );
+                    }
+                    await _saveOrder(cartService, authService);
+                    await cartService.clearCart();
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: const Text('Payment Confirmation'),
+                          content: Text(
+                            'Payment of Rs ${_calculateAdvancePayment(cartService)} processed. Remaining due on delivery.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                                Navigator.pop(context);
+                                Navigator.pushReplacementNamed(context, '/home');
+                              },
+                              child: const Text(
+                                'OK',
+                                style: TextStyle(color: Colors.green),
+                              ),
+                            ),
+                          ],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16.0),
+                          ),
+                          backgroundColor: Colors.white,
+                          elevation: 8,
+                        );
+                      },
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error saving order: $e')),
                     );
                   }
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: const Text('Payment Confirmation'),
-                        content: Text(
-                          'Payment of Rs ${_calculateAdvancePayment(cartService)} processed. Remaining due on delivery.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                              cartService.clearCart();
-                              Navigator.pop(context);
-                              Navigator.pushReplacementNamed(context, '/home');
-                            },
-                            child: const Text(
-                              'OK',
-                              style: TextStyle(color: Colors.green),
-                            ),
-                          ),
-                        ],
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16.0),
-                        ),
-                        backgroundColor: Colors.white,
-                        elevation: 8,
-                      );
-                    },
-                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.tealAccent.withOpacity(0.7),

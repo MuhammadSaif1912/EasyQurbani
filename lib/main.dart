@@ -1,3 +1,4 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -12,19 +13,27 @@ import 'screens/cart_screen.dart';
 import 'screens/wishlist_screen.dart';
 import 'screens/checkout_screen.dart';
 import 'screens/offers_screen.dart';
+import 'screens/orders_screen.dart';
+import 'screens/users_screen.dart';
+import 'dart:async';
 
-void main() async {
-  try {
+void main() {
+  runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    print('Firebase initialized successfully');
-  } catch (e) {
-    print('Error initializing Firebase: $e');
-    // Optionally, you could show an error screen or exit the app
-  }
-  runApp(const MyApp());
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      print('Firebase initialized successfully');
+    } catch (e) {
+      print('Error initializing Firebase: $e');
+      // Optionally, handle error (e.g., show splash or retry screen)
+    }
+
+    runApp(const MyApp());
+  }, (error, stack) {
+    print('Uncaught error: $error');
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -40,7 +49,7 @@ class MyApp extends StatelessWidget {
           update: (_, authService, wishlistService) {
             wishlistService?.setAuthService(authService);
             wishlistService?.loadWishlist();
-            return wishlistService ?? WishlistService(authService); // Return a new instance if null
+            return wishlistService ?? WishlistService(authService);
           },
         ),
         ChangeNotifierProxyProvider<AuthService, CartService>(
@@ -48,7 +57,7 @@ class MyApp extends StatelessWidget {
           update: (_, authService, cartService) {
             cartService?.setAuthService(authService);
             cartService?.loadCart();
-            return cartService ?? CartService(authService); // Return a new instance if null
+            return cartService ?? CartService(authService);
           },
         ),
       ],
@@ -66,7 +75,9 @@ class MyApp extends StatelessWidget {
           '/cart': (context) => CartScreen(),
           '/wishlist': (context) => WishlistScreen(),
           '/checkout': (context) => CheckoutScreen(),
-          '/offers': (context) => OffersScreen(),
+          '/offers': (context) => const OffersScreen(),
+          '/orders': (context) => OrdersScreen(),
+          '/users': (context) => UsersScreen(),
         },
       ),
     );
