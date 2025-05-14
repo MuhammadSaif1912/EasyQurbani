@@ -5,7 +5,7 @@ class OfferModel {
   final String animalId;
   final String animalName;
   final String userId;
-  final String userName; // Add userName field
+  final String userName;
   final double offerPrice;
   final DateTime? timestamp;
   final String status;

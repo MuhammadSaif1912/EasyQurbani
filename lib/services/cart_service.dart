@@ -42,14 +42,21 @@ class CartService with ChangeNotifier {
         ),
         isButchered: data['isButchered'] ?? false,
         deliveryDay: data['deliveryDay'] ?? 'Day 1',
+        quantity: data['quantity'] ?? 1,
       );
     }).toList();
     notifyListeners();
   }
 
-  Future<void> addToCart(AnimalModel animal, bool isButchered, String deliveryDay) async {
+  Future<void> addToCart(AnimalModel animal, bool isButchered, String deliveryDay, {int quantity = 1}) async {
     final userId = _authService?.getCurrentUserId();
     if (userId == null) return;
+
+    final existingItemIndex = _cartItems.indexWhere((item) => item.animal.id == animal.id);
+    if (existingItemIndex != -1) {
+      await incrementQuantity(animal.id);
+      return;
+    }
 
     await FirebaseFirestore.instance
         .collection('users')
@@ -63,14 +70,76 @@ class CartService with ChangeNotifier {
       'imageUrl': animal.imageUrl,
       'isButchered': isButchered,
       'deliveryDay': deliveryDay,
+      'quantity': quantity,
     });
 
     _cartItems.add(CartItem(
       animal: animal,
       isButchered: isButchered,
       deliveryDay: deliveryDay,
+      quantity: quantity,
     ));
     notifyListeners();
+  }
+
+  Future<void> incrementQuantity(String animalId) async {
+    final userId = _authService?.getCurrentUserId();
+    if (userId == null) return;
+
+    final index = _cartItems.indexWhere((item) => item.animal.id == animalId);
+    if (index != -1) {
+      final newQuantity = _cartItems[index].quantity + 1;
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('cart')
+          .doc(animalId)
+          .update({
+        'quantity': newQuantity,
+      });
+
+      _cartItems[index] = CartItem(
+        animal: _cartItems[index].animal,
+        isButchered: _cartItems[index].isButchered,
+        deliveryDay: _cartItems[index].deliveryDay,
+        quantity: newQuantity,
+      );
+      notifyListeners();
+    }
+  }
+
+  Future<void> decrementQuantity(String animalId) async {
+    final userId = _authService?.getCurrentUserId();
+    if (userId == null) return;
+
+    final index = _cartItems.indexWhere((item) => item.animal.id == animalId);
+    if (index != -1) {
+      final currentQuantity = _cartItems[index].quantity;
+      if (currentQuantity <= 1) {
+        // If quantity is 1, remove the item from the cart
+        await removeFromCart(animalId);
+      } else {
+        final newQuantity = currentQuantity - 1;
+
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection('cart')
+            .doc(animalId)
+            .update({
+          'quantity': newQuantity,
+        });
+
+        _cartItems[index] = CartItem(
+          animal: _cartItems[index].animal,
+          isButchered: _cartItems[index].isButchered,
+          deliveryDay: _cartItems[index].deliveryDay,
+          quantity: newQuantity,
+        );
+        notifyListeners();
+      }
+    }
   }
 
   Future<void> removeFromCart(String animalId) async {
@@ -108,6 +177,7 @@ class CartService with ChangeNotifier {
         animal: _cartItems[index].animal,
         isButchered: isButchered,
         deliveryDay: deliveryDay,
+        quantity: _cartItems[index].quantity,
       );
       notifyListeners();
     }

@@ -1,4 +1,3 @@
-// lib/screens/checkout_screen.dart
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +6,7 @@ import '../services/auth_service.dart';
 import '../services/cart_service.dart';
 import '../models/order_model.dart';
 import '../models/cart_item.dart';
+import '../widgets/custom_drawer.dart';
 
 class CheckoutScreen extends StatefulWidget {
   @override
@@ -14,9 +14,11 @@ class CheckoutScreen extends StatefulWidget {
 }
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   Map<String, bool> _butcherOptions = {};
   Map<String, String> _deliveryDays = {};
   final double butcherServiceFee = 7000.0;
+  bool _isAdmin = false;
 
   @override
   void initState() {
@@ -26,6 +28,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       _butcherOptions[item.animal.id] = false;
       _deliveryDays[item.animal.id] = 'Day 1';
     }
+    _checkAdminStatus();
+  }
+
+  Future<void> _checkAdminStatus() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final isAdmin = await authService.isAdmin();
+    setState(() {
+      _isAdmin = isAdmin;
+    });
   }
 
   double _calculateAdvancePayment(CartService cartService) {
@@ -73,19 +84,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         return CartItem(
           animal: item.animal,
           isButchered: _butcherOptions[item.animal.id] ?? false,
-          deliveryDay: _deliveryDays[item.animal.id] ?? 'Day 1', // Required parameter
+          deliveryDay: _deliveryDays[item.animal.id] ?? 'Day 1',
         );
       }).toList(),
-      totalPrice: _calculateTotalPrice(cartService), // Use calculated total
+      totalPrice: _calculateTotalPrice(cartService),
       timestamp: DateTime.now(),
     );
 
-    // Save to orders collection
     final orderRef = await FirebaseFirestore.instance
         .collection('orders')
         .add(order.toFirestore());
 
-    // Save to user's purchases subcollection
     await FirebaseFirestore.instance
         .collection('users')
         .doc(userId)
@@ -94,17 +103,40 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         .set(order.toFirestore());
   }
 
+  Future<void> _logout(BuildContext context) async {
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.signOut();
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Logout failed: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cartService = Provider.of<CartService>(context);
     final authService = Provider.of<AuthService>(context, listen: false);
 
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
         title: const Text('Checkout'),
         backgroundColor: Colors.green[700],
         elevation: 4,
         shadowColor: Colors.green[900],
+        leading: IconButton(
+          icon: const Icon(Icons.menu, color: Colors.white),
+          onPressed: () {
+            _scaffoldKey.currentState?.openDrawer();
+          },
+        ),
+      ),
+      drawer: CustomDrawer(
+        isAdmin: _isAdmin,
+        onLogout: _logout,
       ),
       body: cartService.cartItems.isEmpty
           ? const Center(
@@ -250,8 +282,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       builder: (BuildContext context) {
                         return AlertDialog(
                           title: const Text('Payment Confirmation'),
-                          content: Text(
-                            'Payment of Rs ${_calculateAdvancePayment(cartService)} processed. Remaining due on delivery.',
+                          content: const Text(
+                            'Payment processed! \nRemaining due on delivery',
                           ),
                           actions: [
                             TextButton(

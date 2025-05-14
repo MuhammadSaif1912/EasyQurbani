@@ -1,8 +1,10 @@
+// lib/screens/cart_screen.dart
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/cart_service.dart';
 import '../services/auth_service.dart';
+import '../widgets/custom_drawer.dart';
 
 class CartScreen extends StatefulWidget {
   @override
@@ -10,12 +12,24 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _isAdmin = false;
+
   @override
   void initState() {
     super.initState();
     // Load cart data when the screen is initialized
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<CartService>(context, listen: false).loadCart();
+      _checkAdminStatus();
+    });
+  }
+
+  Future<void> _checkAdminStatus() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final isAdmin = await authService.isAdmin();
+    setState(() {
+      _isAdmin = isAdmin;
     });
   }
 
@@ -36,68 +50,20 @@ class _CartScreenState extends State<CartScreen> {
     final cartService = Provider.of<CartService>(context);
 
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
-        title: const Text('Cart', style: TextStyle(color: Colors.white),),
+        title: const Text('Cart', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.green[700],
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.green[700],
-              ),
-              child: const Text(
-                'Easy Qurbani',
-                style: TextStyle(
-                  color: Colors.yellowAccent,
-                  fontSize: 24,
-                ),
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.home_sharp, color: Colors.amber),
-              title: const Text('Home', style: TextStyle(color: Colors.amberAccent)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/home');
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.favorite, color: Colors.brown[700]),
-                title: const Text('Wishlist', style: TextStyle(color: Colors.brown)),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/wishlist');
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.shopping_cart, color: Colors.green[700]),
-                title: const Text('Cart', style: TextStyle(color: Colors.green)),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/cart');
-                },
-            ),
-              ListTile(
-              leading: Icon(Icons.local_offer, color: Colors.purple[700]),
-              title: const Text('Offers', style: TextStyle(color: Colors.purple)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/offers');
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.logout, color: Colors.red[700]),
-              title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
-              onTap: () {
-                Navigator.pop(context);
-                _logout(context);
-              },
-            ),
-          ],
+        leading: IconButton(
+          icon: const Icon(Icons.menu, color: Colors.white),
+          onPressed: () {
+            _scaffoldKey.currentState?.openDrawer();
+          },
         ),
+      ),
+      drawer: CustomDrawer(
+        isAdmin: _isAdmin,
+        onLogout: _logout,
       ),
       body: cartService.cartItems.isEmpty
           ? const Center(child: Text('Your cart is empty'))
@@ -163,21 +129,60 @@ class _CartScreenState extends State<CartScreen> {
                         ),
                       ],
                     ),
-                    trailing: IconButton(
-                      icon: Icon(
-                        Icons.delete,
-                        color: Colors.green[700],
-                        size: 20,
-                      ),
-                      onPressed: () {
-                        cartService.removeFromCart(item.animal.id);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('${item.animal.name} removed from cart'),
-                            duration: const Duration(seconds: 1),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Quantity controls
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                Icons.remove_circle,
+                                color: Colors.black,
+                                size: 20,
+                              ),
+                              onPressed: () {
+                                cartService.decrementQuantity(item.animal.id);
+                              },
+                            ),
+                            Text(
+                              '${item.quantity}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                Icons.add_circle,
+                                color: Colors.black,
+                                size: 20,
+                              ),
+                              onPressed: () {
+                                cartService.incrementQuantity(item.animal.id);
+                              },
+                            ),
+                          ],
+                        ),
+                        // Delete button
+                        IconButton(
+                          tooltip: 'Remove',
+                          icon: Icon(
+                            Icons.delete,
+                            color: Colors.red[700],
+                            size: 20,
                           ),
-                        );
-                      },
+                          onPressed: () {
+                            cartService.removeFromCart(item.animal.id);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('${item.animal.name} removed from cart'),
+                                duration: const Duration(seconds: 1),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
                 );
@@ -191,9 +196,9 @@ class _CartScreenState extends State<CartScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.tealAccent.withOpacity(0.7),
                 ),
-                child: Text(
-                  'Proceed to Checkout (Rs ${cartService.totalPrice * 0.5})',
-                  style: const TextStyle(fontSize: 16, color: Colors.black),
+                child: const Text(
+                  'Proceed to Checkout',
+                  style: TextStyle(fontSize: 16, color: Colors.black),
                 ),
               ),
             )

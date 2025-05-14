@@ -7,6 +7,7 @@ import '../models/animal_model.dart';
 import '../services/auth_service.dart';
 import '../services/cart_service.dart';
 import '../services/wishlist_service.dart';
+import '../widgets/custom_drawer.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -83,16 +84,20 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Add to Cart'),
+          title: const Text('Add to Cart',
+            style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+              ),
+            ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const SizedBox(height: 10),
               Text(
-                'Advance Payment (50%): Rs ${animal.price * 0.5}',
+                '50% Advance Payment Will Be Charged!',
                 style: TextStyle(
-                  color: Colors.green[700],
-                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
                 ),
               ),
             ],
@@ -146,7 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: Text('Make an Offer for ${animal.name}'),
+          title: Text('Name Your Price - ${animal.name}'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -226,81 +231,51 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _navigateToLatestOffer(BuildContext context, AnimalModel animal) async {
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('offers')
+          .where('animalId', isEqualTo: animal.id)
+          .orderBy('timestamp', descending: true)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No offers yet for ${animal.name}'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+
+      final latestOffer = querySnapshot.docs.first;
+      Navigator.pushNamed(
+        context,
+        '/offers',
+        arguments: {
+          'animalId': animal.id,
+          'offerId': latestOffer.id,
+        },
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error fetching offers: $e'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      drawer: Drawer(
-        backgroundColor: Colors.white,
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.green[700],
-              ),
-              child: const Text(
-                'Easy Qurbani',
-                style: TextStyle(
-                  color: Colors.yellowAccent,
-                  fontSize: 24,
-                ),
-              ),
-            ),
-            if (!_isAdmin)
-              ListTile(
-                leading: Icon(Icons.favorite, color: Colors.brown[700]),
-                title: const Text('Wishlist', style: TextStyle(color: Colors.brown)),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/wishlist');
-                },
-              ),
-            if (!_isAdmin)
-              ListTile(
-                leading: Icon(Icons.shopping_cart, color: Colors.green[700]),
-                title: const Text('Cart', style: TextStyle(color: Colors.green)),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/cart');
-                },
-              ),
-            ListTile(
-              leading: Icon(Icons.local_offer, color: Colors.purple[700]),
-              title: const Text('Offers', style: TextStyle(color: Colors.purple)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/offers');
-              },
-            ),
-            if (_isAdmin)
-              ListTile(
-                leading: Icon(Icons.receipt, color: Colors.orange[700]),
-                title: const Text('Orders', style: TextStyle(color: Colors.orange)),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/orders');
-                },
-              ),
-            if (_isAdmin)
-              ListTile(
-                leading: Icon(Icons.people, color: Colors.blue[700]),
-                title: const Text('Users', style: TextStyle(color: Colors.blue)),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/users');
-                },
-              ),
-            ListTile(
-              leading: Icon(Icons.logout, color: Colors.red[700]),
-              title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
-              onTap: () {
-                Navigator.pop(context);
-                _logout(context);
-              },
-            ),
-          ],
-        ),
+      drawer: CustomDrawer(
+        isAdmin: _isAdmin,
+        onLogout: _logout,
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -320,7 +295,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   IconButton(
                     icon: Icon(
                       Icons.menu_sharp,
-                      color: Colors.black,
+                      color: Colors.white,
                       size: 30,
                     ),
                     onPressed: () {
@@ -340,7 +315,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         Expanded(
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               Container(
                                 width: 180,
@@ -430,16 +405,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   return GridView.builder(
                     padding: const EdgeInsets.all(16.0),
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
+                      crossAxisCount: 2,
                       crossAxisSpacing: 6.0,
                       mainAxisSpacing: 6.0,
-                      childAspectRatio: 3.0,
+                      childAspectRatio: 4.2,
                     ),
                     itemCount: animals.length,
                     itemBuilder: (context, index) {
                       final animal = animals[index];
                       return GestureDetector(
-                        onTap: () => _showOfferDialog(context, animal),
+                        onTap: () => _isAdmin ? _navigateToLatestOffer(context, animal) : _showOfferDialog(context, animal),
                         child: Container(
                           width: 100,
                           height: 100,
@@ -481,57 +456,58 @@ class _HomeScreenState extends State<HomeScreen> {
                                           ),
                                         ),
                                         const SizedBox(height: 4),
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Consumer<WishlistService>(
-                                              builder: (context, wishlistService, child) {
-                                                final isWishlisted = wishlistService.wishlist
-                                                    .any((item) => item.id == animal.id);
-                                                return IconButton(
-                                                  icon: Icon(
-                                                    isWishlisted ? Icons.favorite : Icons.favorite_border,
-                                                    color: isWishlisted ? Colors.red : Colors.green[700],
-                                                    size: 25,
-                                                  ),
-                                                  constraints: const BoxConstraints(),
-                                                  padding: EdgeInsets.zero,
-                                                  onPressed: () {
-                                                    if (isWishlisted) {
-                                                      wishlistService.removeFromWishlist(animal.id);
-                                                      ScaffoldMessenger.of(context).showSnackBar(
-                                                        const SnackBar(
-                                                          content: Text('Removed from Wishlist'),
-                                                          duration: Duration(seconds: 1),
-                                                        ),
-                                                      );
-                                                    } else {
-                                                      wishlistService.addToWishlist(animal);
-                                                      ScaffoldMessenger.of(context).showSnackBar(
-                                                        const SnackBar(
-                                                          content: Text('Added to Wishlist'),
-                                                          duration: Duration(seconds: 1),
-                                                        ),
-                                                      );
-                                                    }
-                                                  },
-                                                );
-                                              },
-                                            ),
-                                            IconButton(
-                                              icon: Icon(
-                                                Icons.add_shopping_cart,
-                                                color: Colors.green[700],
-                                                size: 30,
+                                        if (!_isAdmin) // Show icons only for non-admins
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Consumer<WishlistService>(
+                                                builder: (context, wishlistService, child) {
+                                                  final isWishlisted = wishlistService.wishlist
+                                                      .any((item) => item.id == animal.id);
+                                                  return IconButton(
+                                                    icon: Icon(
+                                                      isWishlisted ? Icons.favorite : Icons.favorite_border,
+                                                      color: isWishlisted ? Colors.red : Colors.green[700],
+                                                      size: 25,
+                                                    ),
+                                                    constraints: const BoxConstraints(),
+                                                    padding: EdgeInsets.zero,
+                                                    onPressed: () {
+                                                      if (isWishlisted) {
+                                                        wishlistService.removeFromWishlist(animal.id);
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                          const SnackBar(
+                                                            content: Text('Removed from Wishlist'),
+                                                            duration: Duration(seconds: 1),
+                                                          ),
+                                                        );
+                                                      } else {
+                                                        wishlistService.addToWishlist(animal);
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                          const SnackBar(
+                                                            content: Text('Added to Wishlist'),
+                                                            duration: Duration(seconds: 1),
+                                                          ),
+                                                        );
+                                                      }
+                                                    },
+                                                  );
+                                                },
                                               ),
-                                              constraints: const BoxConstraints(),
-                                              padding: EdgeInsets.zero,
-                                              onPressed: () {
-                                                _showCartDialog(context, animal);
-                                              },
-                                            ),
-                                          ],
-                                        ),
+                                              IconButton(
+                                                icon: Icon(
+                                                  Icons.add_shopping_cart,
+                                                  color: Colors.green[700],
+                                                  size: 30,
+                                                ),
+                                                constraints: const BoxConstraints(),
+                                                padding: EdgeInsets.zero,
+                                                onPressed: () {
+                                                  _showCartDialog(context, animal);
+                                                },
+                                              ),
+                                            ],
+                                          ),
                                       ],
                                     ),
                                   ),

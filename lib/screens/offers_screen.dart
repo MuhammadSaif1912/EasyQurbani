@@ -1,9 +1,9 @@
-// lib/screens/offers_screen.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../models/offer_model.dart';
+import '../widgets/custom_drawer.dart';
 
 class OffersScreen extends StatefulWidget {
   const OffersScreen({super.key});
@@ -13,9 +13,11 @@ class OffersScreen extends StatefulWidget {
 }
 
 class _OffersScreenState extends State<OffersScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   Stream<List<OfferModel>>? _offersStream;
   bool _isAdmin = false;
-
+  final ScrollController _scrollController = ScrollController();
+  String? _highlightOfferId;
 
   @override
   void initState() {
@@ -40,7 +42,7 @@ class _OffersScreenState extends State<OffersScreen> {
     });
     Query<Map<String, dynamic>> query = FirebaseFirestore.instance
         .collection('offers')
-        .orderBy('timestamp', descending: true); // Sort by timestamp, latest first
+        .orderBy('timestamp', descending: true);
 
     if (!isAdmin) {
       query = query.where('userId', isEqualTo: userId);
@@ -92,7 +94,7 @@ class _OffersScreenState extends State<OffersScreen> {
     }
   }
 
-    Future<void> _logout(BuildContext context) async {
+  Future<void> _logout(BuildContext context) async {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       await authService.signOut();
@@ -105,106 +107,78 @@ class _OffersScreenState extends State<OffersScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null) {
+      final String? offerId = args['offerId'];
+      if (offerId != null) {
+        setState(() {
+          _highlightOfferId = offerId;
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollToOffer(offerId);
+        });
+      }
+    }
+  }
+
+  void _scrollToOffer(String offerId) {
+    const double itemHeight = 120.0;
+    _offersStream?.first.then((offers) {
+      final index = offers.indexWhere((offer) => offer.id == offerId);
+      if (index != -1) {
+        _scrollController.animateTo(
+          index * itemHeight,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
+
+  Future<double?> _getOriginalPrice(String animalId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('animals')
+          .doc(animalId)
+          .get();
+      return doc.data()?['price']?.toDouble();
+    } catch (e) {
+      print('Error fetching original price: $e');
+      return null;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context, listen: false);
 
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
         backgroundColor: Colors.green[700],
         title: const Text(
           'Offers',
-          style: TextStyle(
-            color: Colors.white,
-          ),
+          style: TextStyle(color: Colors.white),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.menu, color: Colors.white),
+          onPressed: () {
+            _scaffoldKey.currentState?.openDrawer();
+          },
         ),
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.green[700],
-              ),
-              child: const Text(
-                'Easy Qurbani',
-                style: TextStyle(
-                  color: Colors.yellowAccent,
-                  fontSize: 24,
-                ),
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.home_sharp, color: Colors.amber),
-              title: const Text('Home', style: TextStyle(color: Colors.amberAccent)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/home');
-                },
-              ),
-            if (!_isAdmin)
-              ListTile(
-                leading: Icon(Icons.favorite, color: Colors.brown[700]),
-                title: const Text('Wishlist', style: TextStyle(color: Colors.brown)),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/wishlist');
-                },
-              ),
-            if (!_isAdmin)
-              ListTile(
-                leading: Icon(Icons.shopping_cart, color: Colors.green[700]),
-                title: const Text('Cart', style: TextStyle(color: Colors.green)),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/cart');
-                },
-              ),
-            ListTile(
-              leading: Icon(Icons.local_offer, color: Colors.purple[700]),
-              title: const Text('Offers', style: TextStyle(color: Colors.purple)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/offers');
-              },
-            ),
-            if (_isAdmin)
-              ListTile(
-                leading: Icon(Icons.receipt, color: Colors.orange[700]),
-                title: const Text('Orders', style: TextStyle(color: Colors.orange)),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/orders');
-                },
-              ),
-            if (_isAdmin)
-              ListTile(
-                leading: Icon(Icons.people, color: Colors.blue[700]),
-                title: const Text('Users', style: TextStyle(color: Colors.blue)),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/users');
-                },
-              ),
-            ListTile(
-              leading: Icon(Icons.logout, color: Colors.red[700]),
-              title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
-              onTap: () {
-                Navigator.pop(context);
-                _logout(context);
-              },
-            ),
-          ],
-        ),
+      drawer: CustomDrawer(
+        isAdmin: _isAdmin,
+        onLogout: _logout,
       ),
       body: FutureBuilder<bool>(
         future: authService.isAdmin(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(
-              child: CircularProgressIndicator(
-                color: Colors.green,
-              ),
+              child: CircularProgressIndicator(color: Colors.green),
             );
           }
 
@@ -215,9 +189,7 @@ class _OffersScreenState extends State<OffersScreen> {
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(
-                  child: CircularProgressIndicator(
-                    color: Colors.green,
-                  ),
+                  child: CircularProgressIndicator(color: Colors.green),
                 );
               }
               if (snapshot.hasError) {
@@ -244,125 +216,168 @@ class _OffersScreenState extends State<OffersScreen> {
               final offers = snapshot.data!;
 
               return ListView.builder(
+                controller: _scrollController,
                 padding: const EdgeInsets.all(16.0),
                 itemCount: offers.length,
                 itemBuilder: (context, index) {
                   final offer = offers[index];
-                  final isFinalStatus = offer.status != 'pending'; // Check if status is accepted or rejected
+                  final isFinalStatus = offer.status != 'pending';
+                  final isHighlighted = _highlightOfferId == offer.id;
 
-                  return Card(
-                    elevation: 3,
-                    margin: const EdgeInsets.symmetric(vertical: 8.0),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.local_offer_sharp,
-                            color: Colors.purple,
-                            size: 30,
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  offer.animalName,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleLarge
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black,
-                                      ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Offered by - ${offer.userName}',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
-                                      ?.copyWith(
-                                        color: Colors.black,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Price: \$${offer.offerPrice.toStringAsFixed(2)}',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
-                                      ?.copyWith(color: Colors.black),
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
+                  return FutureBuilder<double?>(
+                    future: _getOriginalPrice(offer.animalId),
+                    builder: (context, priceSnapshot) {
+                      final originalPrice = priceSnapshot.data;
+                      final difference = originalPrice != null && offer.offerPrice != null
+                          ? originalPrice - offer.offerPrice
+                          : null;
+                      final differenceText = difference != null
+                          ? (difference > 0
+                              ? '(-Rs ${difference.toStringAsFixed(2)})'
+                              : '(+Rs ${(-difference).toStringAsFixed(2)})')
+                          : '';
+
+                      return Card(
+                        color: isHighlighted ? Colors.green[200] : null,
+                        elevation: 3,
+                        margin: const EdgeInsets.symmetric(vertical: 8.0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.local_offer_sharp,
+                                color: Colors.purple,
+                                size: 30,
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Status: ',
+                                      offer.animalName,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleLarge
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    if(_isAdmin) ...[
+                                    Text(
+                                      'Offered by - ${offer.userName}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 4),
+                                    if (originalPrice != null) ...[
+                                      Text(
+                                        'Original Price: Rs ${originalPrice.toStringAsFixed(2)}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.copyWith(color: Colors.black),
+                                      ),
+                                      const SizedBox(height: 4),
+                                    ],
+                                    Text(
+                                      'Offered Price: Rs ${offer.offerPrice.toStringAsFixed(2)}',
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodyMedium
                                           ?.copyWith(color: Colors.black),
                                     ),
-                                    Text(
-                                      offer.status,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(
-                                            color: _getStatusColor(offer.status),
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          'Status: ',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.copyWith(color: Colors.black),
+                                        ),
+                                        Text(
+                                          offer.status,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.copyWith(
+                                                color: _getStatusColor(offer.status),
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (offer.timestamp != null) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Submitted: ${offer.timestamp!.toString().substring(0, 16)}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(color: Colors.black),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              if (isAdmin && !isFinalStatus)
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        foregroundColor: Colors.white,
+                                        backgroundColor: Colors.green[600],
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
+                                        ),
+                                        minimumSize: const Size(90, 40),
+                                      ),
+                                      onPressed: () => _updateOfferStatus(offer.id, 'accepted'),
+                                      child: const Text('Accept'),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        foregroundColor: Colors.white,
+                                        backgroundColor: Colors.red[600],
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
+                                        ),
+                                        minimumSize: const Size(90, 40),
+                                      ),
+                                      onPressed: () => _updateOfferStatus(offer.id, 'rejected'),
+                                      child: const Text('Decline'),
                                     ),
                                   ],
                                 ),
-                                if (offer.timestamp != null) ...[
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Submitted: ${offer.timestamp!.toString().substring(0, 16)}',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(color: Colors.black),
-                                  ),
-                                ],
-                              ],
-                            ),
+                            ],
                           ),
-                          if (isAdmin)
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.check_circle,
-                                    color: Colors.green,
-                                  ),
-                                  tooltip: 'Accept Offer',
-                                  onPressed: isFinalStatus
-                                      ? null
-                                      : () => _updateOfferStatus(offer.id, 'accepted'),
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.cancel,
-                                    color: Colors.red,
-                                  ),
-                                  tooltip: 'Reject Offer',
-                                  onPressed: isFinalStatus
-                                      ? null
-                                      : () => _updateOfferStatus(offer.id, 'rejected'),
-                                ),
-                              ],
-                            ),
-                        ],
-                      ),
-                    ),
+                        ),
+                      );
+                    },
                   );
                 },
               );
