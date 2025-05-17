@@ -1,7 +1,7 @@
-// lib/screens/home_screen.dart
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/animal_model.dart';
 import '../services/auth_service.dart';
@@ -25,6 +25,11 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    // Set the status bar color to match the app theme globally for consistency
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.green, // Matches the app theme
+      statusBarIconBrightness: Brightness.light, // White icons for contrast
+    ));
     final authService = Provider.of<AuthService>(context, listen: false);
     authService.isAdmin().then((isAdmin) {
       setState(() {
@@ -84,12 +89,13 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Add to Cart',
+          title: const Text(
+            'Add to Cart',
             style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-              ),
+              color: Colors.black,
+              fontWeight: FontWeight.bold,
             ),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -271,8 +277,107 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+
     return Scaffold(
       key: _scaffoldKey,
+      appBar: AppBar(
+        title: const Text('Home', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.green[700], // Matches LoginScreen AppBar color
+        leading: IconButton(
+          icon: const Icon(Icons.menu_sharp, color: Colors.white),
+          onPressed: () {
+            _scaffoldKey.currentState?.openDrawer();
+          },
+        ),
+        actions: [
+          Row(
+            children: [
+              Container(
+                width: isMobile ? screenWidth * 0.2 : 180,
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: DropdownButtonFormField<String>(
+                  value: _selectedCategory,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.green[50],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                      borderSide: BorderSide.none,
+                    ),
+                    labelStyle: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: isMobile ? 10 : 12,
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 6.0,
+                      vertical: isMobile ? 8.0 : 12.0,
+                    ),
+                  ),
+                  items: ['All', 'Lamb', 'Goat', 'Cow', 'Camel', 'Rare']
+                      .map((category) => DropdownMenuItem(
+                            value: category,
+                            child: Text(
+                              category,
+                              style: TextStyle(fontSize: isMobile ? 10 : 12),
+                            ),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      print('Selected category changed to: $value');
+                      _selectedCategory = value!;
+                    });
+                  },
+                ),
+              ),
+              Container(
+                width: isMobile ? screenWidth * 0.35 : 180,
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: DropdownButtonFormField<String>(
+                  value: _sortOption,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.green[50],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                      borderSide: BorderSide.none,
+                    ),
+                    labelStyle: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: isMobile ? 10 : 12,
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 6.0,
+                      vertical: isMobile ? 8.0 : 12.0,
+                    ),
+                  ),
+                  items: ['Price: Low to High', 'Price: High to Low']
+                      .map((option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(
+                              option,
+                              style: TextStyle(fontSize: isMobile ? 10 : 12),
+                            ),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      print('Sort option changed to: $value');
+                      _sortOption = value!;
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
       drawer: CustomDrawer(
         isAdmin: _isAdmin,
         onLogout: _logout,
@@ -287,100 +392,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      Icons.menu_sharp,
-                      color: Colors.white,
-                      size: 30,
-                    ),
-                    onPressed: () {
-                      _scaffoldKey.currentState?.openDrawer();
-                    },
-                  ),
-                  const SizedBox(width: 16.0),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        const Text(
-                          'Homepage',
-                          style: TextStyle(
-                            fontSize: 20,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Expanded(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Container(
-                                width: 180,
-                                child: DropdownButtonFormField<String>(
-                                  value: _selectedCategory,
-                                  decoration: InputDecoration(
-                                    filled: true,
-                                    fillColor: Colors.green[50],
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12.0),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                    labelStyle: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
-                                  ),
-                                  items: ['All', 'Lamb', 'Goat', 'Cow', 'Camel', 'Rare']
-                                      .map((category) => DropdownMenuItem(
-                                            value: category,
-                                            child: Text(category, style: TextStyle(fontSize: 12)),
-                                          ))
-                                      .toList(),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      print('Selected category changed to: $value');
-                                      _selectedCategory = value!;
-                                    });
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 16.0),
-                              Container(
-                                width: 180,
-                                child: DropdownButtonFormField<String>(
-                                  value: _sortOption,
-                                  decoration: InputDecoration(
-                                    filled: true,
-                                    fillColor: Colors.green[50],
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12.0),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                    labelStyle: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
-                                  ),
-                                  items: ['Price: Low to High', 'Price: High to Low']
-                                      .map((option) => DropdownMenuItem(
-                                            value: option,
-                                            child: Text(option, style: TextStyle(fontSize: 12)),
-                                          ))
-                                      .toList(),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      print('Sort option changed to: $value');
-                                      _sortOption = value!;
-                                    });
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
             Expanded(
               child: StreamBuilder<List<AnimalModel>>(
                 key: ValueKey(_selectedCategory),
@@ -404,121 +415,123 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
                   return GridView.builder(
                     padding: const EdgeInsets.all(16.0),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: isMobile ? 1 : 2,
                       crossAxisSpacing: 6.0,
                       mainAxisSpacing: 6.0,
-                      childAspectRatio: 4.2,
+                      childAspectRatio: isMobile ? 2 : 2.1,
                     ),
                     itemCount: animals.length,
                     itemBuilder: (context, index) {
                       final animal = animals[index];
                       return GestureDetector(
-                        onTap: () => _isAdmin ? _navigateToLatestOffer(context, animal) : _showOfferDialog(context, animal),
-                        child: Container(
-                          width: 100,
-                          height: 100,
-                          child: Card(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          animal.name,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
+                        onTap: () => _isAdmin
+                            ? _navigateToLatestOffer(context, animal)
+                            : _showOfferDialog(context, animal),
+                        child: Card(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                flex: 2,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        animal.name,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: isMobile ? 14 : 16,
                                         ),
-                                        Text(
-                                          animal.category,
-                                          style: TextStyle(
-                                            color: Colors.green[700],
-                                            fontSize: 12,
-                                          ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      Text(
+                                        animal.category,
+                                        style: TextStyle(
+                                          color: Colors.green[700],
+                                          fontSize: isMobile ? 10 : 12,
                                         ),
-                                        Text(
-                                          'Rs ${animal.price}',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                            color: Colors.black,
-                                          ),
+                                      ),
+                                      Text(
+                                        'Rs ${animal.price}',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: isMobile ? 12 : 14,
+                                          color: Colors.black,
                                         ),
-                                        const SizedBox(height: 4),
-                                        if (!_isAdmin) // Show icons only for non-admins
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Consumer<WishlistService>(
-                                                builder: (context, wishlistService, child) {
-                                                  final isWishlisted = wishlistService.wishlist
-                                                      .any((item) => item.id == animal.id);
-                                                  return IconButton(
-                                                    icon: Icon(
-                                                      isWishlisted ? Icons.favorite : Icons.favorite_border,
-                                                      color: isWishlisted ? Colors.red : Colors.green[700],
-                                                      size: 25,
-                                                    ),
-                                                    constraints: const BoxConstraints(),
-                                                    padding: EdgeInsets.zero,
-                                                    onPressed: () {
-                                                      if (isWishlisted) {
-                                                        wishlistService.removeFromWishlist(animal.id);
-                                                        ScaffoldMessenger.of(context).showSnackBar(
-                                                          const SnackBar(
-                                                            content: Text('Removed from Wishlist'),
-                                                            duration: Duration(seconds: 1),
-                                                          ),
-                                                        );
-                                                      } else {
-                                                        wishlistService.addToWishlist(animal);
-                                                        ScaffoldMessenger.of(context).showSnackBar(
-                                                          const SnackBar(
-                                                            content: Text('Added to Wishlist'),
-                                                            duration: Duration(seconds: 1),
-                                                          ),
-                                                        );
-                                                      }
-                                                    },
-                                                  );
-                                                },
+                                      ),
+                                      const SizedBox(height: 4),
+                                      if (!_isAdmin) // Show icons only for non-admins
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Consumer<WishlistService>(
+                                              builder: (context, wishlistService, child) {
+                                                final isWishlisted = wishlistService.wishlist
+                                                    .any((item) => item.id == animal.id);
+                                                return IconButton(
+                                                  icon: Icon(
+                                                    isWishlisted ? Icons.favorite : Icons.favorite_border,
+                                                    color: isWishlisted ? Colors.red : Colors.green[700],
+                                                    size: isMobile ? 20 : 25,
+                                                  ),
+                                                  constraints: const BoxConstraints(),
+                                                  padding: EdgeInsets.zero,
+                                                  onPressed: () {
+                                                    if (isWishlisted) {
+                                                      wishlistService.removeFromWishlist(animal.id);
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        const SnackBar(
+                                                          content: Text('Removed from Wishlist'),
+                                                          duration: Duration(seconds: 1),
+                                                        ),
+                                                      );
+                                                    } else {
+                                                      wishlistService.addToWishlist(animal);
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        const SnackBar(
+                                                          content: Text('Added to Wishlist'),
+                                                          duration: Duration(seconds: 1),
+                                                        ),
+                                                      );
+                                                    }
+                                                  },
+                                                );
+                                              },
+                                            ),
+                                            IconButton(
+                                              icon: Icon(
+                                                Icons.add_shopping_cart,
+                                                color: Colors.green[700],
+                                                size: isMobile ? 24 : 30,
                                               ),
-                                              IconButton(
-                                                icon: Icon(
-                                                  Icons.add_shopping_cart,
-                                                  color: Colors.green[700],
-                                                  size: 30,
-                                                ),
-                                                constraints: const BoxConstraints(),
-                                                padding: EdgeInsets.zero,
-                                                onPressed: () {
-                                                  _showCartDialog(context, animal);
-                                                },
-                                              ),
-                                            ],
-                                          ),
-                                      ],
-                                    ),
+                                              constraints: const BoxConstraints(),
+                                              padding: EdgeInsets.zero,
+                                              onPressed: () {
+                                                _showCartDialog(context, animal);
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                    ],
                                   ),
                                 ),
-                                ClipRRect(
+                              ),
+                              Expanded(
+                                flex: 3,
+                                child: ClipRRect(
                                   borderRadius: const BorderRadius.horizontal(
                                       right: Radius.circular(12.0)),
                                   child: CachedNetworkImage(
                                     imageUrl: animal.imageUrl,
-                                    width: 200,
-                                    height: 150,
+                                    width: isMobile ? screenWidth * 0.3 : 200,
+                                    height: isMobile ? screenWidth * 0.45 : 150,
                                     fit: BoxFit.cover,
                                     alignment: Alignment.center,
                                     placeholder: (context, url) => Center(
@@ -530,8 +543,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                         const Icon(Icons.broken_image, size: 50),
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       );

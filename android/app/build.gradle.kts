@@ -10,7 +10,7 @@ plugins {
 
 android {
     namespace = "com.example.easy_qurbani"
-    compileSdk = 34
+    compileSdk = 35
     ndkVersion = "29.0.13113456"
 
     compileOptions {
@@ -22,13 +22,13 @@ android {
         jvmTarget = JavaVersion.VERSION_11.toString()
     }
 
-defaultConfig {
-    applicationId "com.example.easy_qurbani"
-    minSdkVersion 21
-    targetSdkVersion flutter.targetSdkVersion
-    versionCode flutter.versionCode
-    versionName flutter.versionName
-}
+    defaultConfig {
+        applicationId = "com.example.easy_qurbani"
+        minSdk = 23 // Use minSdk instead of minSdkVersion for consistency with newer Android DSL
+        targetSdk = 34 // Explicitly set targetSdk for now; adjust if using flutter.targetSdkVersion
+        versionCode = 1 // Explicitly set versionCode; adjust if using flutter.versionCode
+        versionName = "1.0" // Explicitly set versionName; adjust if using flutter.versionName
+    }
 
     buildTypes {
         release {
@@ -43,4 +43,5 @@ flutter {
     source = "../.."
 }
 
-apply plugin: 'com.google.gms.google-services'
+// Apply Google services plugin using Kotlin Script syntax
+apply(plugin = "com.google.gms.google-services")

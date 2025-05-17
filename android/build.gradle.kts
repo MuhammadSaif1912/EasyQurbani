@@ -26,6 +26,14 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
+// Enforce Java 11 compatibility for all subprojects without afterEvaluate
+subprojects {
+    tasks.withType<JavaCompile> {
+        sourceCompatibility = JavaVersion.VERSION_11.toString()
+        targetCompatibility = JavaVersion.VERSION_11.toString()
+    }
+}
+
 tasks.register("clean", Delete::class) {
     delete(rootProject.buildDir)
 }

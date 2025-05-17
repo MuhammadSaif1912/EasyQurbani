@@ -24,17 +24,21 @@ class _OrdersScreenState extends State<OrdersScreen> {
     _initialize();
   }
 
-  void _initialize() async {
-    await FirebaseAuth.instance.currentUser?.getIdToken(true);
-    final authService = Provider.of<AuthService>(context, listen: false);
-    _currentUserId = authService.getCurrentUserId();
-    final isAdmin = await authService.isAdmin();
-    print('Admin status: $isAdmin, User ID: $_currentUserId');
-    setState(() {
-      _isAdmin = isAdmin;
-      _loading = false;
-    });
-  }
+void _initialize() async {
+  // Clear Flutter's image cache
+  imageCache.clear();
+  imageCache.clearLiveImages();
+
+  await FirebaseAuth.instance.currentUser?.getIdToken(true);
+  final authService = Provider.of<AuthService>(context, listen: false);
+  _currentUserId = authService.getCurrentUserId();
+  final isAdmin = await authService.isAdmin();
+  print('Admin status: $isAdmin, User ID: $_currentUserId');
+  setState(() {
+    _isAdmin = isAdmin;
+    _loading = false;
+  });
+}
 
   Stream<List<OrderModel>> _getOrders() {
     if (!_isAdmin) return Stream.value([]);

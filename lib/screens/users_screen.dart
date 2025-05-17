@@ -25,17 +25,21 @@ class _UsersScreenState extends State<UsersScreen> {
     _initialize();
   }
 
-  void _initialize() async {
-    await FirebaseAuth.instance.currentUser?.getIdToken(true);
-    final authService = Provider.of<AuthService>(context, listen: false);
-    _currentUserId = authService.getCurrentUserId();
-    final isAdmin = await authService.isAdmin();
-    print('Admin status: $isAdmin, User ID: $_currentUserId');
-    setState(() {
-      _isAdmin = isAdmin;
-      _loading = false;
-    });
-  }
+void _initialize() async {
+  // Clear Flutter's image cache
+  imageCache.clear();
+  imageCache.clearLiveImages();
+
+  await FirebaseAuth.instance.currentUser?.getIdToken(true);
+  final authService = Provider.of<AuthService>(context, listen: false);
+  _currentUserId = authService.getCurrentUserId();
+  final isAdmin = await authService.isAdmin();
+  print('Admin status: $isAdmin, User ID: $_currentUserId');
+  setState(() {
+    _isAdmin = isAdmin;
+    _loading = false;
+  });
+}
 
   Stream<List<Map<String, dynamic>>> _getUsersWithOrders() {
     if (!_isAdmin) return Stream.value([]);
@@ -63,7 +67,7 @@ class _UsersScreenState extends State<UsersScreen> {
             .collection('users')
             .doc(user.uid)
             .collection('purchases')
-            .orderBy('timestamp', descending: true)
+            .orderBy('timestamp', descending: false)
             .get();
 
         final orders = <OrderModel>[];
